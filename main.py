@@ -1,118 +1,72 @@
-from collections import UserDict
-from datetime import datetime
+from datetime import date
+import re
 
 
 class Field:
-    def __init__(self, value):
+    def __init__(self, value: Any):
+        self.value = value
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, value: Any):
         self._value = value
-
-    def __repr__(self) -> str:
-        return self._value
-
-    def __str__(self) -> str:
-        return self._value
 
 
 class Phone(Field):
+    def __init__(self, number: str):
+        super().__init__(number)
 
-    @property
-    def values(self):
-        return self._value
-
-    @values.setter
-    def values(self, new_value):
-        if len(list(new_value)) >= 9:
-            self._value = new_value
-        else:
-            print('Only 9+ numbers! Number is not add!')
-            return
-
-
-class Name(Field):
-
-    @property
-    def values(self):
-        return self._value
-
-    @values.setter
-    def values(self, new_value):
-        if len(list(new_value)) > 0:
-            user_name = []
-            for el in new_value.split(" "):
-                user_name.append(el.capitalize())
-            self._value = " ".join(user_name)
-        else:
-            print("More than one character! Try again")
-            return
+    def validate(self) -> bool:
+        return re.match(r"^\+380\d{9}$", self.number) is not None
 
 
 class Birthday(Field):
+    def __init__(self, year: int, month: int, day: int):
+        super().__init__(Birthday(year, month, day))
 
-    @property
-    def values(self):
-        return self._value
-
-    @values.setter
-    def values(self, new_value):
-        if len(list(new_value)) == 10 and int(new_value[0:4]) > 0 and int(new_value[5:7]) > 0 and int(
-                new_value[8:10]) > 0:
-            self._value = new_value
-        else:
-            print('Incorect data format! Data is not add')
-            self._value = "Not found"
-            return
+    def validate(self) -> bool:
+        return 1900 <= self.year <= 2099 and 1 <= self.month <= 12 and 1 <= self.day <= 31
 
 
 class Record:
-    def __init__(self, name: Name, phone: Phone, birthday=None):
+    def __init__(self, name: str, email: str, phone: Phone, birthday: Birthday = None):
         self.name = name
-        self.phones = []  # спиисок экземпляр класа Phone
-        self.phones.append(phone)
+        self.email = email
+        self.phone = phone
         self.birthday = birthday
 
-    def add_phone(self, phone: Phone):
-        self.phones.append(phone)
-
-    def days_to_birthday(self):
-        if self.birthday._value != "Not found":
-            today = datetime.today()
-            birthday = datetime.strptime(str(self.birthday), '%Y-%m-%d')
-            current_year = datetime(year=today.year, month=birthday.month, day=birthday.day + 1)
-            result = current_year - today
-            if result.days == 0:
-                return print(f'Birthday {self.name} Today!!!')
-            elif result.days < 0:
-                result = datetime(year=today.year + 1, month=birthday.month, day=birthday.day) - today
-                return print(f'Days to br:{result.days}')
-            else:
-                return print(f'Days to birthday {self.name}: {result.days}')
+    def days_to_birthday(self) -> int:
+        if self.birthday is None:
+            return None
         else:
-            print("Birthday not found")
-
-    def delete_phone(self, phone):
-        for el in self.phones:
-            if phone == el._value:
-                self.phones.remove(el)
-                return
-        print("Error number")
-
-    def change_phone(self, phone, new_phone: Phone):
-        if new_phone._value == "":
-            return
-        for el in self.phones:
-            if phone == el._value:
-                self.add_phone(new_phone)
-                self.phones.remove(el)
-                return
-        print("Error number")
-
-    def __str__(self):
-        return f'Name: {self.name} Phones: {", ".join([str(p) for p in self.phones if str(p) != ""])} Birthday: {self.birthday}'
+            today = date.today()
+            birthday = self.birthday.date()
+            return (birthday - today).days
 
 
-class AddressBook(UserDict):
+class AddressBook:
+    def __init__(self):
+        self.records = []
 
-    def add_record(self, args):
-        for contact_name in self.data:
-            if args.name == contact_name:
-                return print
+    def add(self, record: Record):
+        self.records.append(record)
+
+    def iterator(self, n: int) -> Iterator[Record]:
+        for i in range(0, len(self.records), n):
+            yield self.records[i : i + n]
+
+
+# Додавання запису з днем народження
+addressbook = AddressBook()
+addressbook.add(Record("Іван Іванович", "ivanov@example.com", Phone("+380999999999"), Birthday(2000, 12, 25)))
+
+# Виведення кількості днів до наступного дня народження
+print(addressbook[0].days_to_birthday())  # 191
+
+# Додавання пагінації
+for page in addressbook.iterator(5):
+    for record in page:
+        print(record.name)
